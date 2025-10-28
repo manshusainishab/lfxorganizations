@@ -4,7 +4,6 @@ import { Header } from "../components/header"
 import { Sidebar } from "../components/sidebar"
 import { SearchBar } from "../components/search-bar"
 import { OrganizationGrid } from "../components/organization-grid"
-import { OrganizationModal } from "../components/organization-modal"
 import type { Organization } from "../types/index"
 import axios from "axios"
 import OrganizationDetailsPage from '../components/OrganizationDetailsPage';
@@ -51,10 +50,6 @@ function Home() {
     setSelectedOrg(org)
   }, [])
 
-  const handleCloseModal = useCallback((): void => {
-    setSelectedOrg(null)
-  }, [])
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header title="LFX Organizations" />
@@ -92,111 +87,9 @@ function Home() {
         </main>
       </div>
 
-      {selectedOrg && <OrganizationModal organization={selectedOrg} onClose={handleCloseModal} />}
     </div>
   )
 }
-
-/**
- * Organization details route component (the "X" you requested).
- * Loads organization by id and renders simple details.
- */
-// function OrganizationDetails() {
-//   const { orgId } = useParams<{ orgId: string }>()
-//   const [org, setOrg] = useState<Organization | null>(null)
-//   const [loading, setLoading] = useState<boolean>(true)
-//   const [error, setError] = useState<string | null>(null)
-
-//   useEffect(() => {
-//     if (!orgId) return
-//     let cancelled = false
-
-//     async function fetchOrg() {
-//       setLoading(true)
-//       setError(null)
-//       try {
-//         const response = await axios.get(`http://localhost:3000/${orgId}/details`)
-//         if (!cancelled) {
-//           setOrg(response.data)
-//         }
-//       } catch (err) {
-//         console.error(err)
-//         if (!cancelled) {
-//           setError("Failed to load organization")
-//         }
-//       } finally {
-//         if (!cancelled) setLoading(false)
-//       }
-//     }
-
-//     fetchOrg()
-//     return () => {
-//       cancelled = true
-//     }
-//   }, [orgId])
-
-//   if (loading) {
-//     return (
-//       <div className="p-6">
-//         <Header title="Organization Details" />
-//         <div className="p-6">Loading...</div>
-//       </div>
-//     )
-//   }
-
-//   if (error) {
-//     return (
-//       <div className="p-6">
-//         <Header title="Organization Details" />
-//         <div className="p-6 text-red-500">{error}</div>
-//         <div className="p-6">
-//           <Link to="/" className="text-blue-500 underline">
-//             Back to list
-//           </Link>
-//         </div>
-//       </div>
-//     )
-//   }
-
-//   if (!org) {
-//     return (
-//       <div className="p-6">
-//         <Header title="Organization Details" />
-//         <div className="p-6">Organization not found.</div>
-//         <div className="p-6">
-//           <Link to="/" className="text-blue-500 underline">
-//             Back to list
-//           </Link>
-//         </div>
-//       </div>
-//     )
-//   }
-
-//   return (
-//     <div className="min-h-screen bg-background text-foreground">
-//       <Header title={org.name} />
-//       <div className="p-6">
-//         <h2 className="text-2xl font-bold mb-2">{org.name}</h2>
-//         <p className="text-muted-foreground mb-4">{org.description}</p>
-
-//         <div className="mb-4">
-//           <strong>Term:</strong> {org.term}
-//         </div>
-
-//         <div className="mb-4">
-//           {/* <strong>Years:</strong> {org.years.join(", ")} */}
-//         </div>
-
-//         {/* If you want to reuse the OrganizationModal UI, you could render it here instead */}
-//         <div className="mt-6">
-//           <Link to="/" className="text-blue-500 underline">
-//             Back to list
-//           </Link>
-//         </div>
-//       </div>
-//     </div>
-//   )
-// }
 
 function App() {
   return (

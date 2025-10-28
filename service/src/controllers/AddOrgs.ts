@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { cachedOrgs } from "../utils/cached";
 
 async function findOrCreateOrganization(prisma: PrismaClient, orgName: string) {
   return prisma.organization.upsert({
@@ -91,7 +90,9 @@ export const addOrgs = (prisma: PrismaClient) => async (req: Request, res: Respo
       timeout: 600000, // 60 seconds
     });
 
+    cachedOrgs.length = 0; // Invalidate cache
     res.json({ message: `${projects.length} Projects inserted successfully` });
+    return;
   } catch (err) {
     console.error("❌ Error inserting projects:", err);
     res.status(500).json({ error: "Internal Server Error" });
