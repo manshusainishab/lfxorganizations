@@ -75,6 +75,7 @@ export function OrganizationGrid({
               to={`/${org.id}/details`}
               className="block group"
               onClick={() => onSelectOrg?.(org)}
+              target="_blank"
             >
               <div
                 className="
