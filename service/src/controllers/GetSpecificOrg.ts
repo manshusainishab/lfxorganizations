@@ -1,7 +1,9 @@
-import { PrismaClient } from "@prisma/client";
 import { Request, Response } from "express";
+import { db } from "../db";
+import { organizations, orgDetails, projects, projectSkills, skills } from "../db/schema";
+import { eq, desc } from "drizzle-orm";
 
-export const getOrgById = (prisma: PrismaClient) => async (req: Request, res: Response): Promise<void> => {
+export const getOrgById = async (req: Request, res: Response): Promise<void> => {
   try {
     const orgId = parseInt(req.params.orgId);
     if (isNaN(orgId)) {
@@ -9,17 +11,17 @@ export const getOrgById = (prisma: PrismaClient) => async (req: Request, res: Re
       return;
     }
 
-    // Fetch organization with its OrgDetails -> Projects -> Skills
-    const organization = await prisma.organization.findUnique({
-      where: { id: orgId },
-      include: {
+    // Fetch organization with nested relations manually
+    const org = await db.query.organizations.findFirst({
+      where: eq(organizations.id, orgId),
+      with: {
         details: {
-          orderBy: [{ year: "desc" }, { term: "desc" }],
-          include: {
+          orderBy: [desc(orgDetails.year), desc(orgDetails.term)],
+          with: {
             projects: {
-              include: {
+              with: {
                 skills: {
-                  include: { skill: true },
+                  with: { skill: true },
                 },
               },
             },
@@ -28,34 +30,32 @@ export const getOrgById = (prisma: PrismaClient) => async (req: Request, res: Re
       },
     });
 
-    if (!organization) {
+    if (!org) {
       res.status(404).json({ error: "Organization not found" });
       return;
     }
 
-    // Transform response for cleaner frontend structure
     const result = {
-      id: organization.id,
-      name: organization.name,
-      description: organization.description,
-      logoUrl: organization.logoUrl,
-      yearWiseTerms: organization.details.map((detail: any) => ({
+      id: org.id,
+      name: org.name,
+      description: org.description,
+      logoUrl: org.logoUrl,
+      yearWiseTerms: org.details.map((detail) => ({
         year: detail.year,
         term: detail.term,
-        projects: detail.projects.map((p: any) => ({
+        projects: detail.projects.map((p) => ({
           id: p.id,
           title: p.title,
           upstreamIssue: p.upstreamIssue,
           lfxUrl: p.lfxUrl,
-          skills: p.skills.map((ps: any) => ps.skill.name),
+          skills: p.skills.map((ps) => ps.skill.name),
         })),
       })),
     };
 
     res.status(200).json(result);
-    return;
-  } catch (err: unknown) {
-    console.error(err instanceof Error ? err.message : err);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
-}
+};

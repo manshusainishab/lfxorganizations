@@ -1,98 +1,108 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { db } from "../db";
 import { cachedOrgs } from "../utils/cached";
+import { organizations, orgDetails, projects, skills, projectSkills } from "../db/schema";
+import { eq, and } from "drizzle-orm";
 
-async function findOrCreateOrganization(prisma: PrismaClient, orgName: string) {
-  return prisma.organization.upsert({
-    where: { name: orgName },
-    create: { name: orgName },
-    update: {},
+async function findOrCreateOrganization(orgName: string) {
+  const existing = await db.query.organizations.findFirst({
+    where: eq(organizations.name, orgName),
   });
+
+  if (existing) return existing;
+
+  const [created] = await db.insert(organizations)
+    .values({ name: orgName })
+    .returning();
+  return created;
 }
 
-async function findOrCreateOrgDetail(prisma: PrismaClient, orgId: number, year: number, term: number) {
-  return prisma.orgDetail.upsert({
-    where: {
-      orgId_year_term: {
-        orgId,
-        year,
-        term,
-      },
-    },
-    create: { orgId, year, term },
-    update: {},
+async function findOrCreateorgDetails(orgId: number, year: number, term: number) {
+  const existing = await db.query.orgDetails.findFirst({
+    where: and(
+      eq(orgDetails.orgId, orgId),
+      eq(orgDetails.year, year),
+      eq(orgDetails.term, term)
+    ),
   });
+
+  if (existing) return existing;
+
+  const [created] = await db.insert(orgDetails)
+    .values({ orgId, year, term })
+    .returning();
+  return created;
 }
 
 async function createProject(
-  prisma: PrismaClient,
   orgId: number,
-  orgDetailId: number,
-  
+  orgDetailsId: number,
   projectData: any
 ) {
-  const { project, upstreamIssue, lfxUrl } = projectData;
-  return prisma.project.create({
-    data: {
+  const { project: title, upstreamIssue, lfxUrl } = projectData;
+
+  const [newProject] = await db.insert(projects)
+    .values({
       orgId,
-      orgDetailId,
-      title: project,
+      orgDetailId: orgDetailsId,
+      title,
       upstreamIssue,
       lfxUrl,
-    },
-  });
+    })
+    .returning();
+
+  return newProject;
 }
 
-async function attachSkillsToProject(prisma: PrismaClient, projectId: number, requiredSkills: string[]) {
+async function attachSkillsToProject(projectId: number, requiredSkills: string[]) {
   for (const skillName of requiredSkills) {
-    const skill = await prisma.skill.upsert({
-      where: { name: skillName },
-      create: { name: skillName },
-      update: {},
+    const existingSkill = await db.query.skills.findFirst({
+      where: eq(skills.name, skillName),
     });
 
-    await prisma.projectSkill.create({
-      data: {
-        projectId,
-        skillId: skill.id,
-      },
-    });
+    let skillId: number;
+    if (existingSkill) {
+      skillId = existingSkill.id;
+    } else {
+      const [createdSkill] = await db.insert(skills)
+        .values({ name: skillName })
+        .returning();
+      skillId = createdSkill.id;
+    }
+
+    await db.insert(projectSkills)
+      .values({ projectId, skillId })
+      .onConflictDoNothing(); // prevents duplicate linking
   }
 }
 
-export const addOrgs = (prisma: PrismaClient) => async (req: Request, res: Response) => {
+export const addOrgs = async (req: Request, res: Response) => {
   console.log("📩 Received bulk insert request");
-  const projects = req.body;
 
+  const projects = req.body;
   if (!Array.isArray(projects) || projects.length === 0) {
     return res.status(400).json({ error: "Invalid input format" });
   }
 
   try {
-    await prisma.$transaction(async (tx : any) => {
+    await db.transaction(async (tx) => {
       for (const p of projects) {
-        const { org, project, year: rawYear, term: rawTerm, requiredSkills = [], upstreamIssue, lfxUrl } = p;
-
+        const { org, year: rawYear, term: rawTerm, requiredSkills = [] } = p;
         const year = parseInt(String(rawYear), 10);
         const term = parseInt(String(rawTerm), 10);
 
-        const organization = await findOrCreateOrganization(tx, org);
-
-        const orgDetail = await findOrCreateOrgDetail(tx, organization.id, year, term);
-
-        const newProject = await createProject(tx, organization.id, orgDetail.id, p);
+        const organization = await findOrCreateOrganization(org);
+        const orgDetails = await findOrCreateorgDetails(organization.id, year, term);
+        const newProject = await createProject(organization.id, orgDetails.id, p);
 
         if (requiredSkills.length > 0) {
-          await attachSkillsToProject(tx, newProject.id, requiredSkills);
+          await attachSkillsToProject(newProject.id, requiredSkills);
         }
       }
-    }, {
-      timeout: 600000, // 60 seconds
     });
 
-    cachedOrgs.length = 0; // Invalidate cache
+    cachedOrgs.length = 0;
     res.json({ message: `${projects.length} Projects inserted successfully` });
-    return;
   } catch (err) {
     console.error("❌ Error inserting projects:", err);
     res.status(500).json({ error: "Internal Server Error" });

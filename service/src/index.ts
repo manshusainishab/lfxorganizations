@@ -3,6 +3,7 @@ import cors from 'cors';
 import { router as orgsRouter } from "./router/orgs";
 
 
+
 const app = express();
 app.use(cors());
 app.use(express.json());

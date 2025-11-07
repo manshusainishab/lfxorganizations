@@ -1,35 +1,35 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { db } from "../db";
+import { organizations, orgDetails, projects } from "../db/schema";
 import { cachedOrgs } from "../utils/cached";
+import { sql } from "drizzle-orm";
 
-export const getAllOrgs = (prisma: PrismaClient) => async (req: Request, res: Response): Promise<void> => {
-    if (cachedOrgs.length == 0) {
-        try {
-            const orgs = await prisma.organization.findMany({
-                include: {
-                    details: { select: { year: true, term: true } },
-                    _count: { select: { projects: true } },
-                },
-            });
+export const getAllOrgs = async (req: Request, res: Response): Promise<void> => {
+  if (cachedOrgs.length === 0) {
+    try {
+      const orgs = await db.query.organizations.findMany({
+        with: {
+          details: { columns: { year: true, term: true } },
+          projects: { columns: { id: true } },
+        },
+      });
 
-            const formatted = orgs.map((org: any) => ({
-                id: org.id,
-                name: org.name,
-                description: org.description,
-                years: [...new Set(org.details.map((d: any) => d.year))],
-                logoUrl: org.logoUrl,
-                totalProjects: org._count.projects,
-            }));
+      const formatted = orgs.map((org) => ({
+        id: org.id,
+        name: org.name,
+        description: org.description,
+        years: [...new Set(org.details.map((d) => d.year))],
+        logoUrl: org.logoUrl,
+        totalProjects: org.projects.length,
+      }));
 
-            cachedOrgs.push(...formatted);  // populate cache 
-            res.status(200).json(cachedOrgs);
-            return;
-
-        } catch (err) {
-            console.error("Error fetching home data:", err);
-            res.status(500).json({ error: "Internal Server Error" });
-            return;
-        }
+      cachedOrgs.push(...formatted);
+      res.status(200).json(cachedOrgs);
+    } catch (err) {
+      console.error("Error fetching orgs:", err);
+      res.status(500).json({ error: "Internal Server Error" });
     }
+  } else {
     res.status(200).json(cachedOrgs);
+  }
 };
