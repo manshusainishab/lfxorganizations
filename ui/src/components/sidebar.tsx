@@ -7,22 +7,12 @@ import { YEARS } from "../utils/constants"
 export function Sidebar({
   selectedYears,
   setSelectedYears,
-  selectedTerms,
-  setSelectedTerms,
 }: SidebarProps): JSX.Element {
   const toggleYear = (year: number): void => {
     setSelectedYears(
       selectedYears.includes(year)
         ? selectedYears.filter((y) => y !== year)
         : [...selectedYears, year]
-    )
-  }
-
-  const toggleTerm = (term: 1 | 2 | 3): void => {
-    setSelectedTerms(
-      selectedTerms.includes(term)
-        ? selectedTerms.filter((t) => t !== term)
-        : [...selectedTerms, term]
     )
   }
 
