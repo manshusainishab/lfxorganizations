@@ -34,7 +34,7 @@ export function Sidebar({
             Years
           </h3>
           <div className="flex flex-col gap-2">
-            {YEARS.map((year, i) => {
+            {YEARS.map((year) => {
               const active = selectedYears.includes(year)
               return (
                 <motion.button
