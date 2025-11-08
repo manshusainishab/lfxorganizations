@@ -27,6 +27,8 @@ services:
         condition: service_healthy
     environment:
       - DATABASE_URL=postgres://postgres:postgres@db:5433/mydb
+      - FRONTEND_URL=http://localhost:5173
+      - PORT=3000
     volumes:
       - ./service:/app
       - /app/node_modules
