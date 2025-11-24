@@ -54,6 +54,16 @@ export const projectSkill = pgTable("ProjectSkill", {
   pk: primaryKey({ columns: [t.projectId, t.skillId] }),
 }));
 
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  userName: varchar("username", { length: 255 }).unique().notNull(),
+  name: text("name").notNull(),
+  email: text("email").unique().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  lastLoggedAt: timestamp("last_logged_at"),
+});
+
 // Relations
 export const orgRelations = relations(organization, ({ many }) => ({
   details: many(orgDetail),

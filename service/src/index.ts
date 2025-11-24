@@ -1,11 +1,17 @@
 import express from "express";
 import cors from 'cors';
 import { router as orgsRouter } from "./router/orgs";
+import { router as githubLoginRouter } from "./router/githubLogin";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
+
 
 dotenv.config();
 
 const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(cookieParser());
 const corsOptions = {
   origin: process.env.FRONTEND_URL,
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -18,6 +24,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use("/api/v1", orgsRouter);
+app.use("/api/v1", githubLoginRouter);
 app.get("/", async (req, res) => {
   res.json({ message: "Server is running" });
 });
