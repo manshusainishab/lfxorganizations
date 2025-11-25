@@ -5,16 +5,13 @@ import { router as githubLoginRouter } from "./router/githubLogin";
 import { router as flashcardRouter } from "./router/flashcard";
 import { router as flashcardViewsRouter } from "./router/flashcardViews";
 import cookieParser from "cookie-parser";
-import dotenv from "dotenv";
-
-
-dotenv.config();
+import { FRONTEND_URL, PORT } from '../env';
 
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
 const corsOptions = {
-  origin: process.env.FRONTEND_URL,
+  origin: FRONTEND_URL,
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 };
@@ -32,5 +29,5 @@ app.use("/api/v1/flashcard-views", flashcardViewsRouter);
 app.get("/", async (req, res) => {
   res.json({ message: "Server is running" });
 });
-const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

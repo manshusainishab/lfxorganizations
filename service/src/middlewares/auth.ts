@@ -1,8 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-dotenv.config();
-
+import { JWT_SECRET } from "../../env";
 declare global {
   namespace Express {
     interface Request {
@@ -26,14 +24,14 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
       return res.status(401).json({ message: "Unauthorized: No token in cookies" });
     }
 
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
+  
+    if (!JWT_SECRET) {
       console.error("Missing JWT_SECRET env variable.");
       return res.status(500).json({ message: "Server configuration error" });
     }
 
     // Verify JWT
-    const decoded = jwt.verify(token, secret);
+    const decoded = jwt.verify(token, JWT_SECRET);
 
     req.user = decoded as any;
 

@@ -2,9 +2,8 @@ import axios from "axios";
 import { Request, Response } from "express";
 import { addUser, findUserByEmailOrUserName } from "./users";
 import { generateJWT } from "./jwt";
-import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
-dotenv.config();
+import { CLIENT_ID, CLIENT_SECRET, COOKIE_EXPIRY, ENVIRONMENT, FRONTEND_URL, JWT_SECRET } from "../../env";
 
 export const githubLogin = async (
     req: Request,
@@ -19,8 +18,8 @@ export const githubLogin = async (
         const tokenResponse = await axios.post(
             `https://github.com/login/oauth/access_token`,
             {
-                client_id: process.env.CLIENT_ID,
-                client_secret: process.env.CLIENT_SECRET,
+                client_id: CLIENT_ID,
+                client_secret: CLIENT_SECRET,
                 code,
             },
             { headers: { accept: "application/json" } }
@@ -47,13 +46,13 @@ export const githubLogin = async (
         const token = generateJWT({userId: isExisitng ? isExisitng.id : loginUser?.id, ...userResponse.data});
         res.cookie("auth_token", token, {
             httpOnly: true,
-            secure: false,
-            maxAge: Number(process.env.COOKIE_EXPIRY),
-            sameSite: "lax",
+            secure: ENVIRONMENT == "DEV"  ? false : true,
+            maxAge: COOKIE_EXPIRY,
+            sameSite: ENVIRONMENT == "DEV" ? "lax" : "none",
             path: "/",
         });
 
-        return res.redirect(`${process.env.FRONTEND_URL}`);
+        return res.redirect(FRONTEND_URL);
     } catch (error) {
         res.status(500).json({ error: "OAuth failed" });
     }
@@ -71,7 +70,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
             res.status(401).json({ user: null });
         }
 
-        const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
+        const payload = jwt.verify(token, JWT_SECRET!) as any;
 
         res.json({
             user: {
