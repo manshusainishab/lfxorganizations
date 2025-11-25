@@ -146,9 +146,6 @@ export default function FlashCardPopup({ flashcard }: { flashcard: Flashcard }) 
                     <span className="text-[11px] uppercase tracking-wide font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
                       Answer
                     </span>
-                    <span className="text-[11px] text-gray-400">
-                      Tap to flip back
-                    </span>
                   </div>
 
                   {/* Answer text */}

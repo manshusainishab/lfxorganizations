@@ -1,13 +1,13 @@
 import { useState, useMemo, useEffect } from "react"
 import { BrowserRouter, Routes, Route} from "react-router-dom"
-import { Header } from "./components/header"
-import { Sidebar } from "./components/sidebar"
-import { SearchBar } from "./components/search-bar"
-import { OrganizationGrid } from "./components/organization-grid"
+import { Header } from "./components/Header"
+import { Sidebar } from "./components/Sidebar"
+import { SearchBar } from "./components/SearchBar"
+import { OrganizationGrid } from "./components/OrganizationGrid"
 import type { Organization } from "./types/index"
 import axios from "axios"
 import OrganizationDetailsPage from './components/OrganizationDetailsPage';
-import Loader from "./components/loader"
+import Loader from "./components/Loader"
 import { SERVICE_API_BASE_URL } from "../env"
 import FlashCardPopup from "./components/FlashCardPopup"
 
@@ -18,23 +18,33 @@ function Home() {
   const [selectedTerms, setSelectedTerms] = useState<(1 | 2 | 3)[]>([])
   const [todayFlashcard, setTodayFlashcard] = useState<any>(null);
 
-  useEffect(() => {
-    const fetchOrganizations = async () => {
+ useEffect(() => {
+  const fetchData = async () => {
     try {
-      const response = await axios.get(`${SERVICE_API_BASE_URL}/orgs`)
+      const orgPromise = axios.get(`${SERVICE_API_BASE_URL}/orgs`);
+      const flashCardPromise = axios.get(`${SERVICE_API_BASE_URL}/flashcards/today`, { 
+        withCredentials: true 
+      });
+
+      const orgResponse = await orgPromise;
       setOrganizations(
-      response.data.sort((a: Organization, b: Organization) => a.name.localeCompare(b.name))
-      )
-      const flashCard = await axios.get(`${SERVICE_API_BASE_URL}/flashcards/today`, { withCredentials: true });
-      setTodayFlashcard(flashCard.data);      
-      console.log("Organizations fetched successfully")
-      console.log(response.data)
-    } catch (err : any) {
-      console.error("Failed to fetch organizations", err.message)
+        orgResponse.data.sort((a: Organization, b: Organization) => 
+          a.name.localeCompare(b.name)
+        )
+      );
+
+      flashCardPromise
+        .then((flashRes) => setTodayFlashcard(flashRes.data))
+        .catch(() => setTodayFlashcard(null));
+
+    } catch (err: any) {
+      console.error("Failed to fetch organizations", err.message);
     }
-  }
-    fetchOrganizations()
-  }, [])
+  };
+
+  fetchData();
+}, []);
+
 
   const filteredOrganizations = useMemo<Organization[]>(() => {
     return organizations.filter((org) => {

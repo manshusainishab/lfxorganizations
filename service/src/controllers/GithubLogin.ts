@@ -3,81 +3,91 @@ import { Request, Response } from "express";
 import { addUser, findUserByEmailOrUserName } from "./users";
 import { generateJWT } from "./jwt";
 import jwt from "jsonwebtoken";
-import { CLIENT_ID, CLIENT_SECRET, COOKIE_EXPIRY, ENVIRONMENT, FRONTEND_URL, JWT_SECRET } from "../../env";
+import {
+  CLIENT_ID,
+  CLIENT_SECRET,
+  COOKIE_EXPIRY,
+  ENVIRONMENT,
+  FRONTEND_URL,
+  JWT_SECRET,
+} from "../../env";
 
 export const githubLogin = async (
-    req: Request,
-    res: Response
+  req: Request,
+  res: Response
 ): Promise<void> => {
-    const code = req.query.code as string;
-    if (!code) res.status(400).json({ error: "Missing code parameter" });
+  const code = req.query.code as string;
+  if (!code) res.status(400).json({ error: "Missing code parameter" });
 
-    try {
-        let loginUser;
-        // Step 1: Exchange code for access token
-        const tokenResponse = await axios.post(
-            `https://github.com/login/oauth/access_token`,
-            {
-                client_id: CLIENT_ID,
-                client_secret: CLIENT_SECRET,
-                code,
-            },
-            { headers: { accept: "application/json" } }
-        );
-        const access_token = tokenResponse.data.access_token;
+  try {
+    let loginUser;
+    // Step 1: Exchange code for access token
+    const tokenResponse = await axios.post(
+      `https://github.com/login/oauth/access_token`,
+      {
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        code,
+      },
+      { headers: { accept: "application/json" } }
+    );
+    const access_token = tokenResponse.data.access_token;
 
-        // Step 2: Fetch user info
-        const userResponse = await axios.get("https://api.github.com/user", {
-            headers: { Authorization: `Bearer ${access_token}` },
-        });
+    // Step 2: Fetch user info
+    const userResponse = await axios.get("https://api.github.com/user", {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
 
-        const isExisitng = await findUserByEmailOrUserName(
-            userResponse.data.email,
-            userResponse.data.login
-        );
-        if (!isExisitng) {
-             loginUser = await addUser(
-                userResponse.data.name,
-                userResponse.data.login,
-                userResponse.data.email
-            );
-        }
-
-        const token = generateJWT({userId: isExisitng ? isExisitng.id : loginUser?.id, ...userResponse.data});
-        res.cookie("auth_token", token, {
-            httpOnly: true,
-            secure: ENVIRONMENT == "DEV"  ? false : true,
-            maxAge: COOKIE_EXPIRY,
-            sameSite: ENVIRONMENT == "DEV" ? "lax" : "none",
-            path: "/",
-        });
-
-        return res.redirect(FRONTEND_URL);
-    } catch (error) {
-        res.status(500).json({ error: "OAuth failed" });
+    const isExisitng = await findUserByEmailOrUserName(
+      userResponse.data.email,
+      userResponse.data.login
+    );
+    if (!isExisitng) {
+      loginUser = await addUser(
+        userResponse.data.name,
+        userResponse.data.login,
+        userResponse.data.email
+      );
     }
+
+    const token = generateJWT({
+      userId: isExisitng ? isExisitng.id : loginUser?.id,
+      ...userResponse.data,
+    });
+    res.cookie("auth_token", token, {
+      httpOnly: true,
+      secure: ENVIRONMENT == "DEV" ? false : true,
+      maxAge: COOKIE_EXPIRY,
+      sameSite: ENVIRONMENT == "DEV" ? "lax" : "none",
+      path: "/",
+    });
+
+    return res.redirect(FRONTEND_URL);
+  } catch (error) {
+    res.status(500).json({ error: "OAuth failed" });
+  }
 };
 
 export const logOut = (req: Request, res: Response): void => {
-    res.clearCookie("auth_token", { path: "/" });
-    res.status(200).json({ message: "Logged out successfully" });
-}
+  res.clearCookie("auth_token", { path: "/" });
+  res.status(200).json({ message: "Logged out successfully" });
+};
 
 export const getMe = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const token = req.cookies.auth_token;
-        if (!token) {
-            res.status(401).json({ user: null });
-        }
-
-        const payload = jwt.verify(token, JWT_SECRET!) as any;
-
-        res.json({
-            user: {
-               payload
-            },
-        });
-    } catch (err) {
-        res.status(401).json({ user: null });
+  try {
+    const token = req.cookies.auth_token;
+    if (!token) {
+      res.status(401).json({ user: null });
     }
+
+    const payload = jwt.verify(token, JWT_SECRET!) as any;
+
+    res.json({
+      user: {
+        payload,
+      },
+    });
+  } catch (err) {
+    res.status(401).json({ user: null });
+  }
 };
